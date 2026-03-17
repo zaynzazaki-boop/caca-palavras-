@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caça-Palavras APP</title>
+
+<style>
+body {
+    font-family: Arial;
+    text-align: center;
+    background: #0f172a;
+    color: white;
+}
+
+.light {
+    background: #f4f4f4;
+    color: black;
+}
+
+#grid {
+    display: grid;
+    justify-content: center;
+    margin: 15px;
+}
+
+.cell {
+    width: 28px;
+    height: 28px;
+    background: #1e293b;
+    margin: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.light .cell { background: white; }
+
+.selected { background: #22c55e; }
+.found { background: #16a34a; }
+
+button, select, input {
+    padding: 8px;
+    margin: 5px;
+    border-radius: 5px;
+    border: none;
+}
+
+.found-word {
+    text-decoration: line-through;
+    color: #22c55e;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🔥 Caça-Palavras APP</h1>
+
+<select id="theme">
+<option value="historia">História</option>
+<option value="ciencia">Ciência</option>
+<option value="random">Aleatório</option>
+</select>
+
+<select id="difficulty">
+<option value="10">Fácil</option>
+<option value="12">Médio</option>
+<option value="15">Difícil</option>
+</select>
+
+<input type="number" id="timerInput" placeholder="Tempo (min)" value="2">
+
+<br>
+
+<button onclick="startGame()">Novo Jogo</button>
+<button onclick="toggleTheme()">🌙 Modo</button>
+
+<div>
+⏳ Tempo: <span id="time">0:00</span> | ⭐ <span id="score">0</span>
+</div>
+
+<div id="grid"></div>
+
+<h3>Palavras:</h3>
+<div id="words"></div>
+
+<h3>🏆 Ranking:</h3>
+<div id="ranking"></div>
+
+<script>
+let size, words, grid;
+let selectedCells=[], selectedLetters="";
+let foundWords=[];
+let time=0, score=0, timer;
+
+const directions=[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
+
+const bank = {
+historia: ["REVOLUCAO","IMPÉRIO","GUERRA","REI","RAINHA","NAPOLEAO","BASTILHA","POVO","LIBERDADE","IGUALDADE"],
+ciencia: ["ATOMO","ENERGIA","FORCA","LUZ","CALOR","GRAVIDADE","ELETRON","QUIMICA","FISICA"],
+random: ["GATO","CACHORRO","CASA","CARRO","ESCOLA","JOGO","CELULAR","BRASIL"]
+};
+
+function generateWords(theme){
+    let arr = [...bank[theme]];
+    arr.sort(()=>0.5-Math.random());
+    return arr.slice(0,8);
+}
+
+function startGame(){
+    size = parseInt(difficulty.value);
+    words = generateWords(theme.value);
+    grid = Array.from({length:size},()=>Array(size).fill(""));
+    foundWords=[];
+    score=0;
+
+    time = (parseInt(timerInput.value)||1)*60;
+
+    clearInterval(timer);
+    timer = setInterval(()=>{
+        time--;
+
+        let min = Math.floor(time/60);
+        let sec = time%60;
+        timeEl.textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+
+        if(time<=0){
+            clearInterval(timer);
+            alert("💀 Tempo acabou! Você perdeu!");
+        }
+    },1000);
+
+    placeWords();
+    fillGrid();
+    drawGrid();
+    showWords();
+    updateRanking();
+    scoreEl.textContent=score;
+}
+
+function placeWords(){
+    words.forEach(word=>{
+        let placed=false;
+        while(!placed){
+            let dir = directions[Math.floor(Math.random()*directions.length)];
+            let row = Math.floor(Math.random()*size);
+            let col = Math.floor(Math.random()*size);
+
+            let fits=true;
+
+            for(let i=0;i<word.length;i++){
+                let r=row+dir[0]*i;
+                let c=col+dir[1]*i;
+
+                if(r<0||c<0||r>=size||c>=size||grid[r][c]!=""){
+                    fits=false; break;
+                }
+            }
+
+            if(fits){
+                for(let i=0;i<word.length;i++){
+                    let r=row+dir[0]*i;
+                    let c=col+dir[1]*i;
+                    grid[r][c]=word[i];
+                }
+                placed=true;
+            }
+        }
+    });
+}
+
+function fillGrid(){
+    const letters="ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    for(let i=0;i<size;i++){
+        for(let j=0;j<size;j++){
+            if(grid[i][j]==""){
+                grid[i][j]=letters[Math.floor(Math.random()*26)];
+            }
+        }
+    }
+}
+
+function drawGrid(){
+    gridEl.innerHTML="";
+    gridEl.style.gridTemplateColumns=`repeat(${size},30px)`;
+
+    grid.forEach(row=>{
+        row.forEach(l=>{
+            let cell=document.createElement("div");
+            cell.className="cell";
+            cell.textContent=l;
+
+            cell.onmousedown=()=>startSel(cell);
+            cell.onmouseover=()=>moveSel(cell);
+
+            gridEl.appendChild(cell);
+        });
+    });
+
+    document.onmouseup=endSel;
+}
+
+function startSel(cell){
+    selectedCells=[];
+    selectedLetters="";
+    addCell(cell);
+}
+
+function moveSel(cell){
+    if(selectedCells.length>0) addCell(cell);
+}
+
+function addCell(cell){
+    if(!selectedCells.includes(cell)){
+        selectedCells.push(cell);
+        selectedLetters+=cell.textContent;
+        cell.classList.add("selected");
+    }
+}
+
+function endSel(){
+    if(words.includes(selectedLetters) && !foundWords.includes(selectedLetters)){
+        selectedCells.forEach(c=>{
+            c.classList.remove("selected");
+            c.classList.add("found");
+        });
+
+        foundWords.push(selectedLetters);
+        score+=25;
+        updateWords();
+    } else {
+        selectedCells.forEach(c=>c.classList.remove("selected"));
+    }
+
+    selectedCells=[];
+    selectedLetters="";
+    scoreEl.textContent=score;
+
+    if(foundWords.length===words.length){
+        clearInterval(timer);
+        saveScore();
+        setTimeout(()=>alert("🏆 Você venceu!"),200);
+    }
+}
+
+function showWords(){
+    wordsEl.innerHTML=words.map(w=>`<span id="${w}">${w}</span>`).join(" ");
+}
+
+function updateWords(){
+    foundWords.forEach(w=>{
+        document.getElementById(w).classList.add("found-word");
+    });
+}
+
+function toggleTheme(){
+    document.body.classList.toggle("light");
+}
+
+function saveScore(){
+    let ranking = JSON.parse(localStorage.getItem("ranking")) || [];
+    ranking.push({score});
+    ranking.sort((a,b)=>b.score-a.score);
+    ranking = ranking.slice(0,5);
+    localStorage.setItem("ranking", JSON.stringify(ranking));
+    updateRanking();
+}
+
+function updateRanking(){
+    let ranking = JSON.parse(localStorage.getItem("ranking")) || [];
+    rankingEl.innerHTML = ranking.map(r=>`⭐ ${r.score} pts`).join("<br>");
+}
+
+const gridEl=document.getElementById("grid");
+const wordsEl=document.getElementById("words");
+const rankingEl=document.getElementById("ranking");
+const timeEl=document.getElementById("time");
+const scoreEl=document.getElementById("score");
+const difficulty=document.getElementById("difficulty");
+const theme=document.getElementById("theme");
+const timerInput=document.getElementById("timerInput");
+</script>
+
+</body>
+</html>
