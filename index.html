@@ -3,49 +3,82 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Caça-Palavras APP</title>
+<title>Caça-Palavras PRO</title>
 
 <style>
 body {
+    margin: 0;
     font-family: Arial;
-    text-align: center;
-    background: #0f172a;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
     color: white;
+    text-align: center;
 }
 
-.light {
-    background: #f4f4f4;
-    color: black;
+/* TELA INICIAL */
+#menu {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#menu h1 {
+    font-size: 40px;
+    margin-bottom: 20px;
+}
+
+#menu button {
+    padding: 15px 30px;
+    font-size: 18px;
+    background: #22c55e;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+#menu button:hover {
+    transform: scale(1.1);
+}
+
+/* JOGO */
+#game {
+    display: none;
 }
 
 #grid {
     display: grid;
     justify-content: center;
-    margin: 15px;
+    margin: 20px;
 }
 
 .cell {
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     background: #1e293b;
     margin: 2px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 4px;
+    border-radius: 5px;
     cursor: pointer;
+    transition: 0.2s;
 }
 
-.light .cell { background: white; }
+.cell:hover {
+    background: #334155;
+}
 
 .selected { background: #22c55e; }
 .found { background: #16a34a; }
 
-button, select, input {
+button {
     padding: 8px;
     margin: 5px;
     border-radius: 5px;
     border: none;
+    cursor: pointer;
 }
 
 .found-word {
@@ -57,29 +90,21 @@ button, select, input {
 
 <body>
 
-<h1>🔥 Caça-Palavras APP</h1>
+<!-- MENU -->
+<div id="menu">
+    <h1>🔍 Caça-Palavras</h1>
+    <button onclick="startMenu()">JOGAR</button>
+</div>
 
-<select id="theme">
-<option value="historia">História</option>
-<option value="ciencia">Ciência</option>
-<option value="random">Aleatório</option>
-</select>
+<!-- JOGO -->
+<div id="game">
 
-<select id="difficulty">
-<option value="10">Fácil</option>
-<option value="12">Médio</option>
-<option value="15">Difícil</option>
-</select>
+<h2>🔥 Encontre as palavras</h2>
 
-<input type="number" id="timerInput" placeholder="Tempo (min)" value="2">
-
-<br>
-
-<button onclick="startGame()">Novo Jogo</button>
-<button onclick="toggleTheme()">🌙 Modo</button>
+<input type="number" id="timerInput" value="2"> min
 
 <div>
-⏳ Tempo: <span id="time">0:00</span> | ⭐ <span id="score">0</span>
+⏳ <span id="time">0:00</span> | ⭐ <span id="score">0</span>
 </div>
 
 <div id="grid"></div>
@@ -87,32 +112,33 @@ button, select, input {
 <h3>Palavras:</h3>
 <div id="words"></div>
 
-<h3>🏆 Ranking:</h3>
-<div id="ranking"></div>
+<button onclick="voltarMenu()">⬅ Voltar</button>
+
+</div>
 
 <script>
-let size, words, grid;
+let size = 12;
+let words = ["GATO","CASA","JOGO","ESCOLA","CARRO","BRASIL","TEMPO","MUNDO"];
+let grid;
 let selectedCells=[], selectedLetters="";
 let foundWords=[];
 let time=0, score=0, timer;
 
 const directions=[[0,1],[1,0],[0,-1],[-1,0],[1,1],[-1,-1],[1,-1],[-1,1]];
 
-const bank = {
-historia: ["REVOLUCAO","IMPÉRIO","GUERRA","REI","RAINHA","NAPOLEAO","BASTILHA","POVO","LIBERDADE","IGUALDADE"],
-ciencia: ["ATOMO","ENERGIA","FORCA","LUZ","CALOR","GRAVIDADE","ELETRON","QUIMICA","FISICA"],
-random: ["GATO","CACHORRO","CASA","CARRO","ESCOLA","JOGO","CELULAR","BRASIL"]
-};
-
-function generateWords(theme){
-    let arr = [...bank[theme]];
-    arr.sort(()=>0.5-Math.random());
-    return arr.slice(0,8);
+/* MENU */
+function startMenu(){
+    document.getElementById("menu").style.display="none";
+    document.getElementById("game").style.display="block";
+    startGame();
 }
 
+function voltarMenu(){
+    location.reload();
+}
+
+/* JOGO */
 function startGame(){
-    size = parseInt(difficulty.value);
-    words = generateWords(theme.value);
     grid = Array.from({length:size},()=>Array(size).fill(""));
     foundWords=[];
     score=0;
@@ -123,13 +149,13 @@ function startGame(){
     timer = setInterval(()=>{
         time--;
 
-        let min = Math.floor(time/60);
-        let sec = time%60;
-        timeEl.textContent = `${min}:${sec.toString().padStart(2,'0')}`;
+        let min=Math.floor(time/60);
+        let sec=time%60;
+        timeEl.textContent=`${min}:${sec.toString().padStart(2,'0')}`;
 
         if(time<=0){
             clearInterval(timer);
-            alert("💀 Tempo acabou! Você perdeu!");
+            alert("💀 Tempo acabou!");
         }
     },1000);
 
@@ -137,17 +163,15 @@ function startGame(){
     fillGrid();
     drawGrid();
     showWords();
-    updateRanking();
-    scoreEl.textContent=score;
 }
 
 function placeWords(){
     words.forEach(word=>{
         let placed=false;
         while(!placed){
-            let dir = directions[Math.floor(Math.random()*directions.length)];
-            let row = Math.floor(Math.random()*size);
-            let col = Math.floor(Math.random()*size);
+            let dir=directions[Math.floor(Math.random()*directions.length)];
+            let row=Math.floor(Math.random()*size);
+            let col=Math.floor(Math.random()*size);
 
             let fits=true;
 
@@ -229,7 +253,7 @@ function endSel(){
         });
 
         foundWords.push(selectedLetters);
-        score+=25;
+        score+=10;
         updateWords();
     } else {
         selectedCells.forEach(c=>c.classList.remove("selected"));
@@ -238,12 +262,6 @@ function endSel(){
     selectedCells=[];
     selectedLetters="";
     scoreEl.textContent=score;
-
-    if(foundWords.length===words.length){
-        clearInterval(timer);
-        saveScore();
-        setTimeout(()=>alert("🏆 Você venceu!"),200);
-    }
 }
 
 function showWords(){
@@ -256,33 +274,12 @@ function updateWords(){
     });
 }
 
-function toggleTheme(){
-    document.body.classList.toggle("light");
-}
-
-function saveScore(){
-    let ranking = JSON.parse(localStorage.getItem("ranking")) || [];
-    ranking.push({score});
-    ranking.sort((a,b)=>b.score-a.score);
-    ranking = ranking.slice(0,5);
-    localStorage.setItem("ranking", JSON.stringify(ranking));
-    updateRanking();
-}
-
-function updateRanking(){
-    let ranking = JSON.parse(localStorage.getItem("ranking")) || [];
-    rankingEl.innerHTML = ranking.map(r=>`⭐ ${r.score} pts`).join("<br>");
-}
-
 const gridEl=document.getElementById("grid");
 const wordsEl=document.getElementById("words");
-const rankingEl=document.getElementById("ranking");
 const timeEl=document.getElementById("time");
 const scoreEl=document.getElementById("score");
-const difficulty=document.getElementById("difficulty");
-const theme=document.getElementById("theme");
 const timerInput=document.getElementById("timerInput");
 </script>
 
 </body>
-</html>
+</html> 
